@@ -15,6 +15,8 @@ import (
 
 	"log"
 
+	flag "github.com/spf13/pflag"
+
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"stash.di2e.net/scm/ultra/reduction/pktutil"
@@ -55,12 +57,6 @@ func parsePcapFile(path string) {
 	ripInfo := "INSERT INTO ultratest.tbl_rip (Test_Id, Source_IP, RIP_IP, RIP_Metric, RIP_Netmask, RIP_Next_hop, RIP_Time) " +
 		"VALUES (:Test_Id, :Source_IP, :RIP_IP, :RIP_Metric, :RIP_Netmask, :RIP_Next_hop, :RIP_Time)"
 
-	/*pcapInfo := "INSERT INTO ultratest.tbl_packet_cap (Test_Id, Node_Id, FileName, " +
-	"Source_IP, Destination_IP, " +
-	"Destination_Port, Time, Frame_Length, " +
-	"Packet_Id, TX) VALUES (:Test_Id, :Node_Id, :FileName, :Source_IP, :Destination_IP, :Destination_Port, " +
-	":Time, :Frame_Length, :Packet_Id, :TX)"*/
-
 	pcapInfo := "INSERT INTO ultratest.tbl_packet_cap_test (Test_Id, Node_Id, FileName, " +
 		"Source_IP, Destination_IP, " +
 		"Destination_Port, Time, Frame_Length, " +
@@ -83,12 +79,10 @@ func parsePcapFile(path string) {
 	dbConn.MustExec(nodeInfo, testId, nodeId, startTime.UTC().Unix(), endTime.UTC().Unix(), igmpIp)
 
 	ripChan := make(chan *pktutil.RipPacket)
-
-	go pktutil.ParseRip(path, ripChan)
-
 	packetChan := make(chan *pktutil.DataPacket)
 
 	go pktutil.ParseDataPackets(path, packetChan)
+	go pktutil.ParseRip(path, ripChan)
 
 	tx, _ := dbConn.Beginx()
 
@@ -112,6 +106,7 @@ func parsePcapFile(path string) {
 			}
 
 			_, err := tx.NamedExec(pcapInfo, packet)
+			//_, err := stmtData.Exec(packet)
 			if err != nil {
 				log.Println(err)
 			}
@@ -125,7 +120,7 @@ func parsePcapFile(path string) {
 
 			ripPacket.TestId = testId
 			ripPacket.SourceAddr = igmpIp
-
+			//stmt.Exec(ripPacket)
 			_, err := tx.NamedExec(ripInfo, ripPacket)
 			if err != nil {
 				log.Println(err)
@@ -234,16 +229,60 @@ func parseSnmpFile(path string) {
 func main() {
 	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Lshortfile)
 
+	dataDir := flag.StringP("dir", "d", "", "Data directory to look for testname")
+	flag.Parse()
+
 	doneChan = make(chan bool)
 	snmpFileChan := make(chan string)
 	pcapFileChan := make(chan string)
 
-	if len(os.Args) != 2 {
+	if len(os.Args) != 2 && len(os.Args) != 4 {
 		fmt.Println("Please enter test name on command line")
 		return
 	}
 
-	testName := os.Args[1]
+	var testName string
+
+	if len(os.Args) == 2 {
+		testName = os.Args[1]
+	} else if len(os.Args) == 4 {
+		testName = os.Args[3]
+	}
+
+	var snmpDir string
+	if len(*dataDir) > 0 {
+		snmpDir = fmt.Sprintf("%s/%s/*.json", *dataDir, testName)
+	} else {
+		snmpDir = fmt.Sprintf("/home/ultra/data/*/*/*/%s/*.json", testName)
+	}
+
+	// Find all SNMP files. They should be JSON files
+	snmpMatches, err := filepath.Glob(snmpDir)
+	if err != nil {
+		fmt.Println("No SNMP matches")
+	}
+
+	var pcapDir string
+	if len(*dataDir) > 0 {
+		pcapDir = fmt.Sprintf("%s/%s/*.pcap", *dataDir, testName)
+	} else {
+		pcapDir = fmt.Sprintf("/home/ultra/data/*/*/*/%s/*.pcap", testName)
+	}
+
+	// Find all PCAP files.
+	pcapMatches, err := filepath.Glob(pcapDir)
+	if err != nil {
+		fmt.Println("No PCAP matches")
+	}
+
+	totalFiles += len(pcapMatches) + len(snmpMatches)
+
+	fmt.Printf("Total files: %3d\n", totalFiles)
+
+	if totalFiles == 0 {
+		fmt.Println("No files found for parsing")
+		return
+	}
 
 	// Start Database connection
 	dbConn, err = sqlx.Open("mysql", "root:ultra@tcp(172.17.0.2:3306)/ultratest")
@@ -266,27 +305,15 @@ func main() {
 		go packetWorkerPool(pcapFileChan)
 	}
 
-	// Find all SNMP files. They should be JSON files
-	snmpMatches, err := filepath.Glob("/home/ultra/data/*/*/*/" + testName + "/*.json")
-	if err != nil {
-		fmt.Println("No SNMP matches")
-	}
-
-	// Find all PCAP files.
-	pcapMatches, err := filepath.Glob("/home/ultra/data/*/*/*/" + testName + "/*.pcap")
-	if err != nil {
-		fmt.Println("No PCAP matches")
-	}
-
-	totalFiles += len(pcapMatches) + len(snmpMatches)
-
-	fmt.Printf("Total files: %3d\n", totalFiles)
-
 	// Send SNMP files for parsing
 	wg.Add(1)
 	go func() {
 		for _, snmpMatch := range snmpMatches {
 			snmpFileChan <- snmpMatch
+		}
+
+		for i := 0; i < 5; i++ {
+			go packetWorkerPool(pcapFileChan)
 		}
 		wg.Done()
 	}()

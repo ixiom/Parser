@@ -1,0 +1,41 @@
+{
+	"ImportPath": "stash.di2e.net/scm/ultra/reduction",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v74",
+	"Deps": [
+		{
+			"ImportPath": "github.com/go-sql-driver/mysql",
+			"Comment": "v1.3",
+			"Rev": "a0583e0143b1624142adab07e0e97fe106d99561"
+		},
+		{
+			"ImportPath": "github.com/google/gopacket",
+			"Comment": "v1.1.12-21-gb14ccee",
+			"Rev": "b14ccee21573e98d442bd366d400773db479a294"
+		},
+		{
+			"ImportPath": "github.com/google/gopacket/layers",
+			"Comment": "v1.1.12-21-gb14ccee",
+			"Rev": "b14ccee21573e98d442bd366d400773db479a294"
+		},
+		{
+			"ImportPath": "github.com/google/gopacket/pcap",
+			"Comment": "v1.1.12-21-gb14ccee",
+			"Rev": "b14ccee21573e98d442bd366d400773db479a294"
+		},
+		{
+			"ImportPath": "github.com/jmoiron/sqlx",
+			"Comment": "sqlx-v1.1-103-gcac998c",
+			"Rev": "cac998c4f0959c19c638c523e374fa8e4e0bcfe3"
+		},
+		{
+			"ImportPath": "github.com/jmoiron/sqlx/reflectx",
+			"Comment": "sqlx-v1.1-103-gcac998c",
+			"Rev": "cac998c4f0959c19c638c523e374fa8e4e0bcfe3"
+		},
+		{
+			"ImportPath": "github.com/spf13/pflag",
+			"Rev": "c7e63cf4530bcd3ba943729cee0efeff2ebea63f"
+		}
+	]
+}

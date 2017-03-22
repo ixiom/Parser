@@ -13,10 +13,6 @@ import (
 	"github.com/google/gopacket/pcap"
 )
 
-func ParsePcap(path string, packetChan chan *DataPacket, ripChan chan RipPacket) {
-
-}
-
 /* GetNodeFromRip
 ** Parses a PCAP until it finds the first RIP packet.
 ** If we are parsing an ultra pcap we can parse the filename

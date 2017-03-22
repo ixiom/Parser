@@ -142,12 +142,4 @@ func getPacketHash(ipv4Layer *layers.IPv4, payload []byte) string {
 	h.Write(bs)
 
 	return hex.EncodeToString(h.Sum(nil))
-
-	/*hexString := hex.EncodeToString(h.Sum(bs))
-
-	if strings.Compare("45f800e67e0040110a09a8c0320c00efd41d8cd98f00b204e9800998ecf8427e", hexString) == 0 {
-		fmt.Println("Found packet", fileName)
-	}*/
-
-	return ""
 }
